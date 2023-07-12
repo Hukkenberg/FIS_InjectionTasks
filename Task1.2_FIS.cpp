@@ -29,12 +29,39 @@ void shell_creation(PIMAGE_NT_HEADERS nt_headers) {
     cout << start_pos;
 }
 
-int main()
+int main(int argc, char* argv[])
 {
-    //get the image base
-    PVOID image_base = GetModuleHandle(NULL);
-    PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)image_base;
-    PIMAGE_NT_HEADERS image_nt_headers = (PIMAGE_NT_HEADERS)((DWORD_PTR)image_base + dos_header->e_lfanew);
+    //get the PE file
+    const int MAX_FILEPATH = 255;
+    char fileName[MAX_FILEPATH] = { "C:/benign/benign/00eea85752664955047caad7d6280bc7bf1ab91c61eb9a2542c26b747a12e963.exe" };
+    memcpy_s(&fileName, MAX_FILEPATH, argv[1], MAX_FILEPATH); //exception handling needed
+
+    //parameters initiation
+    HANDLE file = NULL;
+    DWORD fileSize = NULL;
+    DWORD bytesRead = NULL;
+    LPVOID fileData = NULL;
+    PIMAGE_DOS_HEADER dosHeader = {};
+    PIMAGE_NT_HEADERS imageNTHeaders = {};
+
+    //file open
+    file = CreateFileA(fileName, GENERIC_ALL, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (file == INVALID_HANDLE_VALUE) {
+        cout << "Couldn't read file!";
+        return 1;
+    }
+
+    //heap allocation
+    fileSize = GetFileSize(file, NULL);
+    fileData = HeapAlloc(GetProcessHeap(), 0, fileSize);
+
+    // read file bytes to memory
+    bool flag = ReadFile(file, fileData, fileSize, &bytesRead, NULL);
+    if (flag == false) return -1;
+
+    // get the necessary headers
+    PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)fileData;
+    PIMAGE_NT_HEADERS image_nt_headers = (PIMAGE_NT_HEADERS)((DWORD_PTR)fileData + dos_header->e_lfanew);
 
     //implement the shell creator
     shell_creation(image_nt_headers);
