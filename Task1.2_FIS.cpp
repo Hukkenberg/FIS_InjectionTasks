@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
     //get the PE file
     const int MAX_FILEPATH = 255;
     char fileName[MAX_FILEPATH] = { "C:/benign/benign/00eea85752664955047caad7d6280bc7bf1ab91c61eb9a2542c26b747a12e963.exe" };
-    memcpy_s(&fileName, MAX_FILEPATH, argv[1], MAX_FILEPATH); //exception handling needed
+    memcpy_s(&fileName, MAX_FILEPATH, argv[1], MAX_FILEPATH); 
 
     //parameters initiation
     HANDLE file = NULL;
