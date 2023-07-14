@@ -72,18 +72,103 @@ void print_optional_header(PIMAGE_NT_HEADERS nt_headers) {
     cout << "Number of data directories: " << " " << nt_headers -> OptionalHeader.NumberOfRvaAndSizes << endl;
 }
 
+void print_data_directory(PIMAGE_NT_HEADERS nt_headers) {
+    cout << "Export directory address: " << " " << nt_headers->OptionalHeader.DataDirectory[0].VirtualAddress;
+    cout << "Export directory size: " << " " << nt_headers->OptionalHeader.DataDirectory[0].Size;
+    cout << "Import directory address: " << " " << nt_headers->OptionalHeader.DataDirectory[1].VirtualAddress;
+    cout << "Import directory size: " << " " << nt_headers->OptionalHeader.DataDirectory[1].Size;
+}
+
+DWORD print_section_headers(PIMAGE_SECTION_HEADER section_header, PIMAGE_SECTION_HEADER import_section, PIMAGE_NT_HEADERS nt_headers) {
+    //get section location
+    DWORD section_location = (DWORD)nt_headers + sizeof(DWORD) + (DWORD)(sizeof(IMAGE_FILE_HEADER)) + (DWORD)(nt_headers->FileHeader.SizeOfOptionalHeader);
+    DWORD section_size = (DWORD)sizeof(IMAGE_SECTION_HEADER);
+
+    //get offset to import directory RVA
+    DWORD import_dir_rva = nt_headers->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
+
+    //print section data
+    for (int i = 0; i < nt_headers->FileHeader.NumberOfSections; i++) {
+        section_header = (PIMAGE_SECTION_HEADER)section_location;
+        cout << "Name: " << " " << section_header->Name << endl;
+        cout << "Virtual size: " << " " << section_header->Misc.VirtualSize << endl;
+        cout << "Virtual address: " << " " << section_header->VirtualAddress << endl;
+        cout << "Size of raw data: " << " " << section_header->SizeOfRawData << endl;
+        cout << "Pointer to raw data: " << " " << section_header->PointerToRawData << endl;
+        cout << "Pointer to relocations: " << " " << section_header->PointerToRelocations << endl;
+        cout << "Pointer to line numbers: " << " " << section_header->PointerToLinenumbers << endl;
+        cout << "Number of relocations: " << " " << section_header->NumberOfRelocations << endl;
+        cout << "Number of line numbers: " << section_header->NumberOfLinenumbers << endl;
+        cout << "Characteristics: " << section_header->Characteristics << endl;
+
+        //export the section location
+        if (import_dir_rva >= section_header->VirtualAddress && import_dir_rva < sectionHeader->VirtualAddress + sectionHeader->Misc.VirtualSize) {
+            import_section = section_header;
+        }
+    }
+    section_location += section_size;
+    return section_location;
+}
+
+void print_import_table(PIMAGE_IMPORT_DESCRIPTOR* import_des, DWORD raw_offset, PIMAGE_SECTION_HEADER import_section, DWORD thunk, PIMAGE_THUNK_DATA thunk_data) {
+    while (import_dir->Name != 0) {
+        cout << raw_offset + (import_des->Name - import_section->VirtualAddress) << endl;
+        thunk = import_des->OriginalFirstThunk == 0 ? import_des->FirstThunk : import_des->OriginalFirstThunk;
+        thunk_data = (PIMAGE_THUNK_DATA)(raw_offset + (thunk - import_section->VirtualAddress));
+        import_dir++;
+    }
+
+    while (thunk_data->u1.AddressOfData != 0) {
+        if (thunk_data->u1.AddressOfData > 0x80000000) {
+            cout << "Ordinal: " << (WORD)thunk_data->u1.AddressOfData;
+        } else {
+            cout << raw_offset + (thunk_data->u1.AddressOfData - import_section->VirtualAddress + 2) << endl;
+        }
+        thunk_data++;
+    }
+}
+
+/*void print_export_table(IMAGE_EXPORT_DIRECTORY* export_dir, DWORD raw_offset, PIMAGE_SECTION_HEADER export_section, DWORD thunk, PIMAGE_THUNK_DATA thunk_data) {
+    while (export_dir->Name != 0) {
+        cout << raw_offset + (export_des->Name - import_section->VirtualAddress) << endl;
+        thunk = export_des->OriginalFirstThunk == 0 ? export_des->FirstThunk : export_des->OriginalFirstThunk;
+        thunk_data = (PIMAGE_THUNK_DATA)(raw_offset + (thunk - export_section->VirtualAddress));
+        export_dir++;
+    }
+
+    while (thunk_data->u1.AddressOfData != 0) {
+        if (thunk_data->u1.AddressOfData > 0x80000000) {
+            cout << "Ordinal: " << (WORD)thunk_data->u1.AddressOfData;
+        }
+        else {
+            cout << raw_offset + (thunk_data->u1.AddressOfData - import_section->VirtualAddress + 2) << endl;
+        }
+        thunk_data++;
+    }
+}*/
+
 int main(int argc, char* argv[])
 {
-    //variables uploading
+    //file uploading
     const int MAX_FILEPATH = 255;
     char fileName[MAX_FILEPATH] = {"C:/benign/benign/00eea85752664955047caad7d6280bc7bf1ab91c61eb9a2542c26b747a12e963.exe"};
     memcpy_s(&fileName, MAX_FILEPATH, argv[1], MAX_FILEPATH);
+    
+    //variables initiating
     HANDLE file = NULL;
     DWORD fileSize = NULL;
     DWORD bytesRead = NULL;
     LPVOID fileData = NULL;
-    PIMAGE_DOS_HEADER dosHeader = {};
-    PIMAGE_NT_HEADERS imageNTHeaders = {};
+    PIMAGE_DOS_HEADER dos_header = {};
+    PIMAGE_NT_HEADERS image_nt_headers = {};
+    PIMAGE_SECTION_HEADER section_header = {};
+    PIMAGE_SECTION_HEADER import_section = {};
+    PIMAGE_IMPORT_DESCRIPTOR* import_descriptor = NULL;
+    IMAGE_EXPORT_DIRECTORY* export_directory = NULL;
+    PIMAGE_THUNK_DATA thunk_data = {};
+    DWORD thunk = NULL;
+    DWORD raw_offset = NULL;
+
 
     //file open
     file = CreateFileA(fileName, GENERIC_ALL, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -101,11 +186,11 @@ int main(int argc, char* argv[])
     if (flag == false) return -1;
   
     //print DOS Header
-    PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)fileData;
+    dos_header = (PIMAGE_DOS_HEADER)fileData;
     print_dos_header(dos_header);
 
     //print NT header
-    PIMAGE_NT_HEADERS image_nt_headers = (PIMAGE_NT_HEADERS)((DWORD)fileData + dos_header -> e_lfanew);
+    image_nt_headers = (PIMAGE_NT_HEADERS)((DWORD)fileData + dos_header -> e_lfanew);
     print_nt_headers(image_nt_headers);
 
     //print PE Header
@@ -113,6 +198,20 @@ int main(int argc, char* argv[])
 
     //print optional header
     print_optional_header(image_nt_headers);
+
+    //print data directory
+    print_data_directory(image_nt_headers);
+
+    //print section header
+    DWORD section_header_location = print_section_headers(section_header, import_section, image_nt_headers);
+
+    //print import table
+    raw_offset = (DWORD)fileData + import_section->PointerToRawData;
+    import_descriptor = (PIMAGE_IMPORT_DESCRIPTOR)(raw_offset + (image_nt_headers->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress - import_section->VirtualAddress));
+    print_import_table(import_descriptor, raw_offset, import_section, thunk, thunk_data);
+
+    //print export table
+    //print_export_table(export_directory, raw_offset, export_section, thunk, thunk_data);
 
     return 0;
 }
