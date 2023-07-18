@@ -6,21 +6,24 @@
 using namespace std;
 
 __declspec(naked) void code_cave(DWORD start_pt, DWORD difference_between_iohs, DWORD message) {
+    //assembly code to build up the cave
     __asm {
-        pushad
+        pop start_pt
+        MOV message, EDX
+        PUSHAD
+        PUSHFD
     }
 
     //plug the message box here
-    DWORD* inject_pt = (DWORD*)start_pt;
-    DWORD* message_pos = (DWORD*)(*inject_pt + difference_between_iohs);
-    *message_pos = message;
+    cout << message << endl;
 
     //have the registers restored
     _asm {
-        popad
-        mov eax, dword ptr ds : [ecx]
-        lea esi, dword ptr ds : [esi]
-        jmp ret_address
+        POPFD
+        POPAD
+        CMP EDX, 0x00001600
+        push start_pt
+        ret
     }
 }
 
