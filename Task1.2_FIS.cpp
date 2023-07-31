@@ -22,6 +22,7 @@ int main(int argc, char* argv[])
     LIST_ENTRY* head = *(LIST_ENTRY**)((DWORD)ldr + 0x14);
     LIST_ENTRY* entry = head->Flink;
 
+    //search for GetProcAddress
     while (entry != head) {
         LDR_DATA_TABLE_ENTRY* module = *(LDR_DATA_TABLE_ENTRY**)((DWORD)entry + 0x08);
         USHORT length = *(USHORT*)((DWORD)module + 0x24);
@@ -31,6 +32,9 @@ int main(int argc, char* argv[])
         }
         entry = entry->Flink;
     }
+
+    //search for LoadLibrary
+    FARPROC lib_address = GetProcAddress(LoadLibraryA('kernel32.lib'), GetNativeSystemInfo);
 
     //the essential header info is gathered here.
     HMODULE kernel32 = GetKernel32Base();
