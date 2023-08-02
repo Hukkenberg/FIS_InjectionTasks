@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <Windows.h>
 #include <WinUser.h>
+#include <winternl.h>
 
 using namespace std;
 
@@ -12,7 +13,7 @@ int main(int argc, char* argv[])
     char lpFileName[MAX_FILEPATH] = { "C:\benign\benign\1aa177b92c99b9458b270907d65d5687af48385fbbf42c3aef9b69d61d284721.exe" }; //sample no26   
 
     //code cave creation - in this step, a codecave is built, and a generalistic address is made for later editing.
-    PEB* peb;
+    PEB* peb = nullptr;
     __asm {
         mov eax, fs: [0x30]
         mov peb, eax
