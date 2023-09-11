@@ -96,8 +96,14 @@ includelib user32.lib
 			call eax
 			jmp PushAddress
 		PushAddress:
+			push 0
+			push 0
+			push ebx
+			push 0
+			call eax
+			add esp, 8
+			mov eax, 0xaaaaaaaa
 			jmp eax
-			ret
 		; exit		
 		add esp, 1ch											
 		add esp, 0ch									
