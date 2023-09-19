@@ -148,9 +148,13 @@ int main(int argc, char* argv[])
 {
     //file uploading
     const int MAX_FILEPATH = 255;
-    char file_name[MAX_FILEPATH] = {"C:/benign/benign/00eea85752664955047caad7d6280bc7bf1ab91c61eb9a2542c26b747a12e963.exe"};
+    char file_name[MAX_FILEPATH] = { "C:/benign/benign/00eea85752664955047caad7d6280bc7bf1ab91c61eb9a2542c26b747a12e963.exe" };
+    if (argv[1] == NULL)
+        return -20;
     memcpy_s(&file_name, MAX_FILEPATH, argv[1], MAX_FILEPATH);
-    
+    if (&file_name == NULL)
+        return -10;
+
     //variables initiating
     HANDLE file = NULL;
     DWORD file_size = NULL;
@@ -171,7 +175,11 @@ int main(int argc, char* argv[])
 
     //heap allocation
     file_size = GetFileSize(file, NULL);
+    if (file_size == NULL)
+        return -2;
     file_data = HeapAlloc(GetProcessHeap(), 0, file_size);
+    if (file_data == NULL)
+        return -3;
 
     //read file bytes to memory
     bool flag = ReadFile(file, file_data, file_size, &bytes_read, NULL);
@@ -179,6 +187,9 @@ int main(int argc, char* argv[])
   
     //print DOS Header
     dos_header = (PIMAGE_DOS_HEADER)file_data;
+    if (dos_header == NULL) {
+        return -11;
+    }
     print_dos_header(dos_header);
 
     //print NT header
@@ -198,7 +209,11 @@ int main(int argc, char* argv[])
     print_section_headers(section_header, image_nt_headers, import_section);
 
     //print import table
+    if (import_section == NULL || file_data == NULL) {
+        return -111;
+    }
     DWORD raw_offset = (DWORD)file_data + import_section->PointerToRawData;
+
     print_import_export_table(import_section, image_nt_headers, raw_offset, thunk);
 
     //print export table
